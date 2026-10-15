@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="paper">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>陇原非遗数字图谱 · 甘肃非物质文化遗产交互可视化</title>
+<meta name="description" content="《陇原非遗数字图谱》——以甘肃省国家级非物质文化遗产代表性项目为数据基底，构建地图谱系、关系图谱与纹样再生三位一体的交互式数字人文可视化作品。2026年第十四届全国大学生数字媒体科技作品及创意竞赛参赛作品。">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 运行自检：脚本异常时给出可见提示，避免答辩现场出现「白屏无解释」 -->
+<div id="err-banner" hidden></div>
+<div id="js-status" data-state="pending">脚本加载中…</div>
+<script>
+(function () {
+  var banner = document.getElementById('err-banner'),
+      status = document.getElementById('js-status'),
+      errs = [];
+  function show(msg) {
+    errs.push(msg);
+    banner.hidden = false;
+    banner.innerHTML = '<b>运行异常（自检提示）</b><pre>' + errs.join('\n\n').replace(/[<>]/g, '') + '</pre>';
+  }
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT') {
+      show('脚本加载失败：' + (e.target.src || '') );
+    } else {
+      show((e.message || 'error') + '\n@ ' + (e.filename || '') + ':' + (e.lineno || '') + ':' + (e.colno || '') +
+        (e.error && e.error.stack ? '\n' + e.error.stack : ''));
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    show('未处理的 Promise 拒绝：' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  window.__lyOk = function (txt) {
+    status.setAttribute('data-state', 'ok');
+    status.textContent = txt || '脚本运行正常';
+  };
+  window.__lyFail = function (txt) { status.setAttribute('data-state', 'fail'); show(txt); };
+  if (/[?&]nobar(=|$)/.test(location.search)) document.body.classList.add('nobar');
+})();
+</script>
+
+<!-- 宣纸肌理 / 扫描线 -->
+<div class="texture" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="seal">陇</span>
+    <div class="brand-text">
+      <h1>陇原非遗数字图谱</h1>
+      <p>LONGYUAN INTANGIBLE CULTURAL HERITAGE ATLAS</p>
+    </div>
+  </div>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="视图切换">
+    <button class="tab is-active" role="tab" aria-selected="true" data-view="overview">总览</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="map">图谱地图</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="graph">关系谱系</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="motif">纹样再生</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="about">关于作品</button>
+  </nav>
+
+  <div class="topbar-actions">
+    <span class="tag-cmit">2026 CMIT · 数字艺术与可视化设计</span>
+    <button class="btn-icon" id="theme-toggle" title="切换 宣纸 / 玄色 主题" aria-label="切换主题">◐</button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ══════════════ 总览 ══════════════ -->
+  <section class="view is-active" id="view-overview" role="tabpanel">
+    <div class="hero">
+      <div class="hero-left">
+        <p class="eyebrow">甘肃 · 十四市州 · 十大门类 · 五批国家级名录</p>
+        <h2 class="hero-title">把散落在<span class="hl">陇原大地</span>上的<br>非物质文化遗产，<br>织成一张可读、可探、可再生的<span class="hl">数字图谱</span>。</h2>
+        <p class="hero-sub">
+          本作品以甘肃省国家级非物质文化遗产代表性项目为数据基底，融合真实行政区划边界、
+          项目申报地区分布、门类构成与批次演进，构建「地图 — 谱系 — 纹样」三层可视化叙事；
+          并以程序化生成技术对非遗纹样进行数字再生，让静态名录成为可交互、可传播、可再创作的文化界面。
+        </p>
+        <div class="hero-meta">
+          <span>数据截至 <b id="meta-cutoff">—</b></span>
+          <span class="dot">·</span>
+          <span>收录项目 <b id="meta-count">—</b> 项</span>
+          <span class="dot">·</span>
+          <span>可视化引擎 原生 SVG / Canvas</span>
+        </div>
+      </div>
+      <div class="hero-right">
+        <canvas id="hero-canvas" width="720" height="720" aria-label="非遗纹样程序化生成预览"></canvas>
+        <p class="canvas-cap">纹样再生引擎 · 实时演算（每 3.6 秒自动生成一帧）</p>
+      </div>
+    </div>
+
+    <div class="stat-row" id="stat-row"></div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>十大门类构成</h3>
+          <p>按国务院公布的非物质文化遗产十大门类统计，点击扇区可筛选全站数据</p>
+        </div>
+        <div class="panel-body chart-flex">
+          <svg id="chart-category" viewBox="0 0 460 340" role="img" aria-label="门类构成环形图"></svg>
+          <ul class="legend" id="legend-category"></ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>十四市州分布</h3>
+          <p>按项目申报地区（市州）统计，点击条目可在地图中定位</p>
+        </div>
+        <div class="panel-body">
+          <svg id="chart-city" viewBox="0 0 520 400" role="img" aria-label="市州分布条形图"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>名录批次演进</h3>
+          <p>国务院先后公布五批国家级非物质文化遗产代表性项目名录</p>
+        </div>
+        <div class="panel-body">
+          <svg id="chart-batch" viewBox="0 0 520 300" role="img" aria-label="批次演进图"></svg>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>数据速读</h3>
+          <p>由本图谱收录数据实时统计（官方口径见「关于作品」）</p>
+        </div>
+        <div class="panel-body">
+          <ul class="facts" id="facts-list"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ 图谱地图 ══════════════ -->
+  <section class="view" id="view-map" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>图谱地图</h2>
+        <p>行政边界采用真实矢量数据；项目点位按申报地区聚合示意分布，点击市州或点位查看详情。</p>
+      </div>
+      <div class="toolbar">
+        <div class="field">
+          <input type="search" id="search" placeholder="搜索项目 / 门类 / 市州…" autocomplete="off">
+          <button class="btn-mini" id="search-clear" title="清空">×</button>
+        </div>
+        <div class="field">
+          <select id="filter-batch">
+            <option value="all">全部批次</option>
+          </select>
+        </div>
+        <div class="field">
+          <select id="filter-metric">
+            <option value="count">色阶：项目数量</option>
+            <option value="richness">色阶：门类丰富度</option>
+          </select>
+        </div>
+        <button class="btn-mini wide" id="filter-reset">重置筛选</button>
+      </div>
+    </div>
+
+    <div class="chips" id="chips-category" role="group" aria-label="门类筛选"></div>
+
+    <div class="map-layout">
+      <div class="map-wrap panel">
+        <svg id="map" role="img" aria-label="甘肃非遗分布地图"></svg>
+        <div class="map-legend" id="map-legend"></div>
+        <div class="map-tip" id="map-tip" hidden></div>
+        <div class="map-badge" id="map-badge">—</div>
+      </div>
+      <aside class="side panel" id="side-panel">
+        <div class="side-empty" id="side-empty">
+          <p class="side-hint">← 点击地图中的市州</p>
+          <p>查看该地区的非遗项目清单、门类构成与代表性项目详情。</p>
+        </div>
+        <div class="side-body" id="side-body" hidden></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════════ 关系谱系 ══════════════ -->
+  <section class="view" id="view-graph" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>关系谱系</h2>
+        <p>以「项目 — 门类 — 市州 — 标签」四类节点构建力导向关系图，悬停高亮邻接关系，点击项目节点查看详情。</p>
+      </div>
+      <div class="toolbar">
+        <div class="field">
+          <select id="graph-mode">
+            <option value="all">显示全部关系</option>
+            <option value="category">仅 项目—门类</option>
+            <option value="city">仅 项目—市州</option>
+            <option value="tag">仅 项目—标签</option>
+          </select>
+        </div>
+        <button class="btn-mini wide" id="graph-reset">重排布局</button>
+        <button class="btn-mini wide" id="graph-pause">暂停演算</button>
+      </div>
+    </div>
+    <div class="panel graph-panel">
+      <canvas id="graph" width="1400" height="820"></canvas>
+      <div class="graph-legend" id="graph-legend"></div>
+      <div class="graph-hud" id="graph-hud">节点 — · 关系 —</div>
+    </div>
+  </section>
+
+  <!-- ══════════════ 纹样再生 ══════════════ -->
+  <section class="view" id="view-motif" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>纹样再生</h2>
+        <p>提取五类陇原非遗的形态基因（旋纹、团花、香包、皮影、吉祥结），以参数化程序实时生成纹样，可导出为 4K 图像用于文创与展陈。</p>
+      </div>
+      <div class="toolbar">
+        <div class="field">
+          <select id="motif-family"></select>
+        </div>
+        <button class="btn-mini wide" id="motif-random">随机演化</button>
+        <button class="btn-mini wide primary" id="motif-export">导出 PNG</button>
+      </div>
+    </div>
+
+    <div class="motif-layout">
+      <div class="panel motif-stage">
+        <canvas id="motif" width="1080" height="1080"></canvas>
+        <p class="canvas-cap" id="motif-caption">—</p>
+      </div>
+
+      <aside class="panel motif-controls">
+        <div class="ctrl-group">
+          <h4>母题基因</h4>
+          <p class="ctrl-desc" id="motif-about">—</p>
+        </div>
+        <div class="ctrl-group">
+          <h4>参数</h4>
+          <label class="ctrl"><span>演化种子 <b id="v-seed">—</b></span>
+            <input type="range" id="p-seed" min="1" max="9999" value="2026"></label>
+          <label class="ctrl"><span>结构密度 <b id="v-density">—</b></span>
+            <input type="range" id="p-density" min="4" max="48" value="16"></label>
+          <label class="ctrl"><span>线条力度 <b id="v-weight">—</b></span>
+            <input type="range" id="p-weight" min="1" max="12" value="4"></label>
+          <label class="ctrl"><span>对称重数 <b id="v-sym">—</b></span>
+            <input type="range" id="p-sym" min="3" max="24" value="12"></label>
+          <label class="ctrl"><span>色彩偏移 <b id="v-hue">—</b></span>
+            <input type="range" id="p-hue" min="-60" max="60" value="0"></label>
+        </div>
+        <div class="ctrl-group">
+          <h4>配色方案</h4>
+          <div class="swatches" id="palettes"></div>
+        </div>
+        <div class="ctrl-group">
+          <h4>底纹</h4>
+          <div class="segmented" id="paper-mode">
+            <button data-val="paper" class="is-active">宣纸</button>
+            <button data-val="ink">玄色</button>
+            <button data-val="none">纯色</button>
+          </div>
+        </div>
+        <div class="ctrl-group">
+          <h4>已生成</h4>
+          <p class="ctrl-desc">点击「导出 PNG」保存当前纹样（2160×2160 高清位图）。</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════════ 关于 ══════════════ -->
+  <section class="view" id="view-about" role="tabpanel">
+    <div class="view-head">
+      <div>
+        <h2>关于作品</h2>
+        <p>参赛信息、创作理念、技术实现与数据来源。</p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>参赛信息</h3></div>
+        <div class="panel-body">
+          <table class="kv">
+            <tr><th>赛事</th><td>2026 年第十四届全国大学生数字媒体科技作品及创意竞赛（数媒赛）</td></tr>
+            <tr><th>赛道</th><td>自主选题类 · 数字艺术与可视化设计类赛项</td></tr>
+            <tr><th>作品名称</th><td>陇原非遗数字图谱 —— 甘肃非物质文化遗产交互可视化与纹样再生</td></tr>
+            <tr><th>申报单位</th><td>甘肃农业大学</td></tr>
+            <tr><th>团队成员</th><td>王乾勇、袁博宇</td></tr>
+            <tr><th>作品形态</th><td>Web 交互可视化应用（可离线运行，无需后端）</td></tr>
+            <tr><th>技术实现</th><td>原生 HTML / CSS / JavaScript · SVG 矢量制图 · Canvas 粒子与力导向演算 · 参数化纹样生成</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>创作理念</h3></div>
+        <div class="panel-body prose">
+          <p><b>问题意识。</b>甘肃是华夏文明的重要发祥地之一，也是多民族交融的文化走廊。在已公布的五批国家级非物质文化遗产代表性项目名录中，甘肃项目数量位居全国前列，但公众认知长期停留在「花儿」「皮影」等少数符号上，大量项目处于「有名录、无传播」的状态。</p>
+          <p><b>解决路径。</b>作品不做名录的电子化搬运，而是把名录重构为三种可交互的认知界面：用<b>地图</b>回答「在哪里」，用<b>谱系</b>回答「和谁相关」，用<b>纹样再生</b>回答「长什么样、能变成什么」。</p>
+          <p><b>数据伦理。</b>所有数据字段均标注来源；点位为申报地区示意图，不代表具体传承场所在地；纹样再生为形态抽象再创作，非文物复制。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>创新点</h3></div>
+        <div class="panel-body">
+          <ol class="prose-list">
+            <li><b>三层可视化叙事</b>：地图分布 → 关系谱系 → 纹样再生，从「位置」到「关联」再到「形态」，构成完整认知闭环。</li>
+            <li><b>真实地理数据驱动</b>：内嵌甘肃省 14 市州真实行政边界矢量数据，地图非装饰性插画，而可承载真实统计色阶。</li>
+            <li><b>程序化纹样再生引擎</b>：将旋纹、团花、香包、皮影、吉祥结五类形态基因抽象为参数化算法，实现非遗纹样的无限演化与高清导出，形成可落地的文创生产力。</li>
+            <li><b>零依赖离线运行</b>：不依赖任何第三方库与网络请求，单目录即可在答辩现场断网演示，工程可靠性高。</li>
+            <li><b>可访问性设计</b>：全站键盘可达、语义化标签、色阶同时以数值标注，兼顾色觉障碍观众。</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>数据来源</h3><p>作品恪守「数据可溯源」原则</p></div>
+        <div class="panel-body">
+          <ul class="sources" id="source-list"></ul>
+          <p class="disclaimer" id="data-notes"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 详情抽屉 -->
+<aside class="drawer" id="drawer" hidden aria-live="polite">
+  <button class="drawer-close" id="drawer-close" aria-label="关闭">×</button>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<footer class="footer">
+  <span>陇原非遗数字图谱 · 甘肃农业大学 · 王乾勇 / 袁博宇</span>
+  <span class="dot">·</span>
+  <span>2026 年第十四届全国大学生数字媒体科技作品及创意竞赛参赛作品</span>
+  <span class="dot">·</span>
+  <span id="footer-note">数据来源详见「关于作品」</span>
+</footer>
+
+<script src="js/geo.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
